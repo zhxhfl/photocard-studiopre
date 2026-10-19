@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f5f5">
+<title>Photocard Studio</title>
+<style>
+:root{--ink:#111111;--muted:#666666;--pink:#111111;--pale:#f3f3f3;--line:#dedede;--white:#fff}
+*{box-sizing:border-box}
+body{margin:0;background:#ffffff;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif}
+.app{max-width:520px;margin:auto;min-height:100dvh;padding:20px 16px calc(24px + env(safe-area-inset-bottom))}
+header{display:flex;justify-content:space-between;align-items:center;margin:4px 0 18px}
+.brand{font-size:21px;font-weight:800;letter-spacing:-.6px}.brand span{color:#111111}
+.pill{font-size:11px;border:1px solid var(--line);border-radius:99px;padding:6px 10px;color:var(--muted);background:#fff}
+.intro{margin-bottom:16px}.intro h1{font-size:23px;line-height:1.35;margin:0 0 7px}.intro p{font-size:13px;line-height:1.65;color:var(--muted);margin:0}
+.stage{position:relative;overflow:hidden;background:#e9e9e9;border-radius:24px;aspect-ratio:3/4;box-shadow:0 12px 30px #46304312;isolation:isolate}
+#video{width:100%;height:100%;object-fit:cover;position:absolute;inset:0;display:none;background:#ddd}
+#previewBg{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 25%,#fff 0,#eeeeee 45%,#cccccc 100%)}
+.fakeScene{position:absolute;inset:0;overflow:hidden;background:linear-gradient(155deg,#f5f5f5,#cfcfcf)}
+.fakeScene:before{content:"";position:absolute;width:75%;height:46%;left:12%;bottom:-7%;border-radius:50% 50% 0 0;background:linear-gradient(135deg,#c8c8c8,#888888)}
+.fakeScene:after{content:"";position:absolute;left:9%;top:9%;width:35%;height:35%;border-radius:50%;background:#fff8;filter:blur(2px)}
+.sceneLabel{position:absolute;left:15px;top:15px;z-index:2;background:#ffffffdf;border-radius:99px;padding:7px 10px;font-size:11px;color:#645664;backdrop-filter:blur(6px)}
+#card{position:absolute;z-index:3;left:50%;top:48%;width:42%;aspect-ratio:2/3;transform:translate(-50%,-50%);touch-action:none;filter:drop-shadow(0 10px 10px #25172740);cursor:grab;user-select:none}
+#card img{width:100%;height:100%;object-fit:contain;border-radius:7px;display:block;pointer-events:none}
+#card:before{content:"";position:absolute;z-index:8;inset:-3.8%;border:2px solid rgba(255,255,255,.88);border-radius:12px;background:linear-gradient(135deg,rgba(255,255,255,.22),rgba(255,255,255,.035) 42%,rgba(255,255,255,.14));box-shadow:0 4px 12px rgba(0,0,0,.18),inset 0 0 0 1px rgba(255,255,255,.5);pointer-events:none}
+#card:after{content:"";position:absolute;z-index:9;left:7%;top:-2%;width:32%;height:104%;border-radius:10px;background:linear-gradient(100deg,rgba(255,255,255,.22),rgba(255,255,255,0) 70%);transform:skewY(-2deg);pointer-events:none}
+
+#placeholderCard{width:100%;height:100%;border:5px solid #fff;border-radius:7px;background:linear-gradient(160deg,#f5f5f5,#c9c9c9 55%,#888888);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;box-shadow:inset 0 0 0 1px #ffffffaa;color:#fff}
+#placeholderCard .star{font-size:35px;text-shadow:0 3px 12px #00000022}#placeholderCard strong{font-size:13px;letter-spacing:2px;margin-top:10px}#placeholderCard small{font-size:9px;letter-spacing:1px;margin-top:5px}
+.hint{position:absolute;bottom:78px;left:50%;transform:translateX(-50%);z-index:4;white-space:nowrap;background:#111111c9;color:white;padding:8px 12px;border-radius:99px;font-size:11px;backdrop-filter:blur(8px)}
+.stageCapture{position:absolute;display:none;left:16px;right:16px;bottom:16px;width:calc(100% - 32px);z-index:12;min-height:54px;background:#111;color:#fff;border:1px solid #fff;border-radius:15px;box-shadow:0 5px 18px #0004;font-size:15px;font-weight:800}
+.panel{background:white;border:1px solid var(--line);border-radius:20px;padding:15px;margin-top:14px}
+.panelTitle{font-size:13px;font-weight:750;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+button,.uploadLabel{font:inherit;border:0;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;border-radius:13px;min-height:46px;padding:11px 12px;font-size:13px;font-weight:700;transition:transform .12s}
+button:active,.uploadLabel:active{transform:scale(.98)}
+.primary{background:var(--pink);color:#fff}.secondary,.uploadLabel{background:#f2f2f2;color:#5f4a5a;border:1px solid #dedede}.wide{width:100%;margin-top:9px}
+.uploadLabel input{display:none}
+.controls{display:grid;grid-template-columns:1fr;gap:13px}
+label.control{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;margin-bottom:7px}
+input[type=range]{width:100%;accent-color:#111111}
+.note{font-size:11px;line-height:1.6;color:var(--muted);margin:10px 2px 0}
+.status{font-size:12px;line-height:1.55;margin-top:10px;color:#444444;min-height:18px}
+#result{display:none;width:100%;height:auto;aspect-ratio:auto;object-fit:contain;border-radius:14px;margin-top:12px}
+.captureDock{display:none}
+body.camera-on{padding-bottom:calc(90px + env(safe-area-inset-bottom))}
+.albumGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.albumItem{min-width:0;border:1px solid #dedede;border-radius:12px;padding:7px;background:#fff}
+.albumThumb{width:100%;aspect-ratio:2/3;object-fit:contain;background:#f2f2f2;border-radius:7px;display:block}
+.albumName{font-size:10px;line-height:1.35;overflow-wrap:anywhere;margin:6px 0;max-height:28px;overflow:hidden}
+.albumButtons{display:grid;grid-template-columns:1fr;gap:5px}
+.albumButtons button{min-height:32px;padding:6px;font-size:11px;border-radius:8px}
+.emptyAlbum{padding:18px 12px;text-align:center;border:1px dashed #ccc;border-radius:12px;color:#777;font-size:12px;line-height:1.6}
+.manualPanel{margin-top:12px;padding:10px;border:1px solid var(--line);border-radius:14px;background:#fafafa}
+.manualCanvasWrap{width:100%;max-height:55vh;overflow:hidden;border-radius:10px;background:#e5e5e5;touch-action:none}
+#manualCanvas{width:100%;height:auto;display:block;touch-action:none}
+.scanStatus{font-size:12px;line-height:1.5;color:#444;margin:8px 0}
+footer{text-align:center;color:#777777;font-size:10px;margin-top:19px}
+@media(min-width:600px){body{padding:18px 0}.app{border:1px solid #e8e8e8;border-radius:28px;background:#ffffff}}
+</style>
+</head>
+<body>
+<div class="app">
+<header><div class="brand">♡ Photocard<span> Studio</span></div><div class="pill">BETA · PERSONAL</div></header>
+<section class="intro"><h1>推しと、どこでも一緒に。</h1><p>デジタルトレカを風景に重ねて、好きな瞬間を撮ろう。</p></section>
+<div class="stage" id="stage">
+  <div id="previewBg" class="fakeScene"></div>
+  <video id="video" autoplay playsinline muted></video>
+  <div class="sceneLabel" id="sceneLabel">PHOTO SPOT · PREVIEW</div>
+  <div id="card" aria-label="トレカ。ドラッグして移動">
+    <div id="placeholderCard"><div class="star">✦</div><strong>MY BIAS</strong><small>YOUR PHOTOCARD</small><div style="margin-top:17px;font-size:10px;letter-spacing:2px">♡ 01 ♡</div></div>
+  </div>
+  <div class="hint" id="dragHint">カードをドラッグして位置を調整</div><button class="stageCapture" id="captureInStage" type="button">◎　写真を撮る</button>
+</div>
+<div class="panel">
+  <div class="panelTitle"><span>01 · カードをセット</span><span style="color:#555555">PNG / JPG</span></div>
+  <div class="actions">
+    <label class="uploadLabel">＋ 画像から読み込む<input id="cardInput" type="file" accept="image/*"></label>
+    <label class="uploadLabel">◎ トレカを撮影<input id="scanInput" type="file" accept="image/*" capture="environment"></label>
+    <button class="secondary" id="resetCard">↺ 位置をリセット</button>
+  </div>
+  <div class="actions" style="margin-top:9px">
+    <button class="primary" id="saveToAlbum" disabled>＋ アルバムに保存</button>
+  </div>
+  <div class="note">保存済み画像は「画像から読み込む」、実物を撮影する場合は「トレカを撮影」を選んでね。読み込んだ画像はカードとして配置・保存できます。</div>
+  <button class="secondary wide" id="manualScan" style="margin-top:10px">▣　四隅を手動で調整して切り抜く</button>
+  <div class="manualPanel" id="manualPanel" style="display:none">
+    <div class="panelTitle">四隅をカードの角に合わせてね</div>
+    <div class="manualCanvasWrap"><canvas id="manualCanvas"></canvas></div>
+    <div class="scanStatus" id="scanStatus">①左上 ②右上 ③右下 ④左下の丸をドラッグしてね。</div>
+    <div class="actions"><button class="secondary" id="cancelManual">キャンセル</button><button class="primary" id="applyManual">切り抜く</button></div>
+  </div>
+</div>
+<div class="panel" id="albumPanel">
+  <div class="panelTitle"><span>MY ALBUM · トレカアルバム</span><span id="albumCount">0枚</span></div>
+  <div id="albumGrid" class="albumGrid"><div class="emptyAlbum" style="grid-column:1/-1">読み込んだトレカを「アルバムに保存」すると、ここに残るよ。</div></div>
+  <p class="note">アルバムはこのブラウザの端末内に保存されます。同じSafariで開いてね。サイトデータを消去すると消える場合があります。</p>
+</div>
+<div class="panel">
+  <div class="panelTitle"><span>02 · 撮影をセットアップ</span></div>
+  <div class="actions">
+    <button class="secondary" id="startCamera">◎ カメラを起動</button>
+    <button class="secondary" id="switchCamera">⇄ カメラ切替</button>
+  </div>
+  <div class="controls" style="margin-top:15px">
+    <div><label class="control" for="size"><span>カードのサイズ</span><span id="sizeValue">42%</span></label><input id="size" type="range" min="20" max="75" value="42"></div>
+    <div><label class="control" for="rotate"><span>カードの角度</span><span id="rotateValue">0°</span></label><input id="rotate" type="range" min="-20" max="20" value="0"></div>
+  </div>
+  <button class="primary wide" id="capture">◎　写真を撮る</button>
+  <div class="status" id="status" role="status">準備OK。画像を選ぶか、サンプルカードで試してね。</div>
+</div>
+<div class="panel" id="resultPanel" style="display:none">
+  <div class="panelTitle"><span>03 · 撮影した写真</span><span>READY</span></div>
+  <img id="result" alt="撮影した写真">
+  <button class="primary wide" id="download">↓　写真を保存</button>
+  <p class="note">保存ボタンで画像を開き、iPhoneの共有メニューから「画像を保存」を選んでね。</p>
+</div>
+<div class="captureDock" id="captureDock"><button class="primary" id="captureFloating">◎　写真を撮る</button></div>
+<footer>Made for your photocard moments ♡ · 画像はこのページ内で処理します</footer>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const video=$('video'), stage=$('stage'), card=$('card'), size=$('size'), rotate=$('rotate');
+let stream=null, facing='environment', cardImage=null, objectUrl=null, currentBlob=null, currentName='My Photocard', drag=null, cardX=.5, cardY=.48, capturedUrl=null;
+const DB_NAME='photocard-studio-db', DB_STORE='cards';
+let albumDb=null;
+function openAlbumDb(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,1);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(DB_STORE))db.createObjectStore(DB_STORE,{keyPath:'id',autoIncrement:true});};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}
+function albumRequest(mode,fn){return openAlbumDb().then(db=>new Promise((resolve,reject)=>{const tx=db.transaction(DB_STORE,mode);const store=tx.objectStore(DB_STORE);let req;try{req=fn(store)}catch(e){reject(e);return}tx.oncomplete=()=>resolve(req?req.result:undefined);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);}));}
+async function refreshAlbum(){try{const cards=await albumRequest('readonly',store=>store.getAll());$('albumCount').textContent=cards.length+'枚';const grid=$('albumGrid');grid.innerHTML='';if(!cards.length){grid.innerHTML='<div class="emptyAlbum" style="grid-column:1/-1">読み込んだトレカを「アルバムに保存」すると、ここに残るよ。</div>';return;}cards.sort((a,b)=>b.createdAt-a.createdAt);for(const item of cards){const url=URL.createObjectURL(item.blob);const el=document.createElement('div');el.className='albumItem';const img=document.createElement('img');img.className='albumThumb';img.src=url;img.alt=item.name;const name=document.createElement('div');name.className='albumName';name.textContent=item.name;const buttons=document.createElement('div');buttons.className='albumButtons';const use=document.createElement('button');use.className='primary';use.textContent='使う';use.onclick=()=>loadAlbumCard(item);const del=document.createElement('button');del.className='secondary';del.textContent='削除';del.onclick=async()=>{if(confirm('このトレカをアルバムから削除する？')){await albumRequest('readwrite',store=>store.delete(item.id));URL.revokeObjectURL(url);refreshAlbum();}};buttons.append(use,del);el.append(img,name,buttons);grid.append(el);}}catch(e){$('albumGrid').innerHTML='<div class="emptyAlbum" style="grid-column:1/-1">アルバムを開けませんでした。Safariで再読み込みしてね。</div>';}}
+function showCurrentCard(blob,name){currentBlob=blob;currentName=name||'My Photocard';if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl=URL.createObjectURL(blob);const img=new Image();img.onload=()=>{cardImage=img;card.style.aspectRatio=img.naturalWidth+' / '+img.naturalHeight;$('placeholderCard').style.display='none';let el=card.querySelector('img');if(!el){el=document.createElement('img');el.alt='選択したトレカ';card.appendChild(el)}el.src=objectUrl;$('saveToAlbum').disabled=false;status('トレカを読み込んだよ。必要なら「アルバムに保存」を押してね。');};img.onerror=()=>status('この画像は読み込めませんでした。別の画像を試してね。');img.src=objectUrl;}
+
+let manualImage=null,manualPoints=[],manualDrag=-1,manualCanvasScale=1;
+function drawManualCanvas(){
+ const c=$('manualCanvas'),ctx=c.getContext('2d');if(!manualImage)return;
+ const maxW=900,scale=Math.min(1,maxW/manualImage.naturalWidth);
+ c.width=Math.round(manualImage.naturalWidth*scale);c.height=Math.round(manualImage.naturalHeight*scale);
+ manualCanvasScale=scale;ctx.drawImage(manualImage,0,0,c.width,c.height);
+ ctx.strokeStyle='#fff';ctx.lineWidth=Math.max(2,c.width*.004);ctx.beginPath();
+ manualPoints.forEach((p,i)=>{if(i===0)ctx.moveTo(p.x*scale,p.y*scale);else ctx.lineTo(p.x*scale,p.y*scale)});
+ ctx.closePath();ctx.stroke();ctx.fillStyle='rgba(0,0,0,.14)';ctx.fill();
+ manualPoints.forEach((p,i)=>{ctx.beginPath();ctx.arc(p.x*scale,p.y*scale,Math.max(10,c.width*.018),0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle='#111';ctx.lineWidth=2;ctx.stroke();ctx.fillStyle='#111';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String(i+1),p.x*scale,p.y*scale)});
+}
+function openManualCrop(){
+ if(!currentBlob){$('scanStatus').textContent='先にトレカ画像を読み込んでね。';return;}
+ manualImage=new Image();manualImage.onload=()=>{
+   const w=manualImage.naturalWidth,h=manualImage.naturalHeight;
+   manualPoints=[{x:w*.12,y:h*.08},{x:w*.88,y:h*.08},{x:w*.88,y:h*.92},{x:w*.12,y:h*.92}];
+   $('manualPanel').style.display='block';drawManualCanvas();$('manualPanel').scrollIntoView({behavior:'smooth',block:'nearest'});
+   $('scanStatus').textContent='①左上 ②右上 ③右下 ④左下の順に、丸をカードの四隅へドラッグしてね。';
+ };manualImage.src=URL.createObjectURL(currentBlob);
+}
+$('manualScan').onclick=openManualCrop;
+$('cancelManual').onclick=()=>{$('manualPanel').style.display='none';};
+function manualPointer(e){
+ const c=$('manualCanvas'),r=c.getBoundingClientRect(),x=(e.clientX-r.left)*(c.width/r.width),y=(e.clientY-r.top)*(c.height/r.height);
+ return {x:x/manualCanvasScale,y:y/manualCanvasScale};
+}
+$('manualCanvas').addEventListener('pointerdown',e=>{
+ const p=manualPointer(e);let best=-1,dist=Infinity;
+ manualPoints.forEach((q,i)=>{const d=Math.hypot(q.x-p.x,q.y-p.y);if(d<dist){dist=d;best=i}});
+ if(dist<Math.max(35,manualImage.naturalWidth*.08)){manualDrag=best;$('manualCanvas').setPointerCapture(e.pointerId);}
+});
+$('manualCanvas').addEventListener('pointermove',e=>{
+ if(manualDrag<0)return;const p=manualPointer(e);manualPoints[manualDrag]={x:Math.max(0,Math.min(manualImage.naturalWidth,p.x)),y:Math.max(0,Math.min(manualImage.naturalHeight,p.y))};drawManualCanvas();
+});
+$('manualCanvas').addEventListener('pointerup',()=>manualDrag=-1);
+$('manualCanvas').addEventListener('pointercancel',()=>manualDrag=-1);
+$('applyManual').onclick=async()=>{
+ try{
+  const [tl,tr,br,bl]=manualPoints;
+  const widthTop=Math.hypot(tr.x-tl.x,tr.y-tl.y),widthBottom=Math.hypot(br.x-bl.x,br.y-bl.y);
+  const heightLeft=Math.hypot(bl.x-tl.x,bl.y-tl.y),heightRight=Math.hypot(br.x-tr.x,br.y-tr.y);
+  const outW=600,outH=Math.round(outW*Math.max(heightLeft,heightRight)/Math.max(1,Math.max(widthTop,widthBottom)));
+  const c=document.createElement('canvas');c.width=outW;c.height=Math.min(1800,Math.max(600,outH));
+  const ctx=c.getContext('2d');
+  // Fast bilinear quadrilateral warp approximation, sampled into a regular grid.
+  const imgDataCanvas=document.createElement('canvas');imgDataCanvas.width=manualImage.naturalWidth;imgDataCanvas.height=manualImage.naturalHeight;
+  const ictx=imgDataCanvas.getContext('2d',{willReadFrequently:true});ictx.drawImage(manualImage,0,0);
+  const src=ictx.getImageData(0,0,imgDataCanvas.width,imgDataCanvas.height),dst=ctx.createImageData(c.width,c.height);
+  for(let y=0;y<c.height;y++){
+   const v=y/(c.height-1);
+   for(let x=0;x<c.width;x++){
+    const u=x/(c.width-1);
+    const sx=(1-u)*(1-v)*tl.x+u*(1-v)*tr.x+u*v*br.x+(1-u)*v*bl.x;
+    const sy=(1-u)*(1-v)*tl.y+u*(1-v)*tr.y+u*v*br.y+(1-u)*v*bl.y;
+    const ix=Math.max(0,Math.min(src.width-1,Math.round(sx))),iy=Math.max(0,Math.min(src.height-1,Math.round(sy)));
+    const si=(iy*src.width+ix)*4,di=(y*c.width+x)*4;
+    dst.data[di]=src.data[si];dst.data[di+1]=src.data[si+1];dst.data[di+2]=src.data[si+2];dst.data[di+3]=255;
+   }
+  }
+  ctx.putImageData(dst,0,0);
+  const blob=await new Promise(resolve=>c.toBlob(resolve,'image/jpeg',.94));if(!blob)throw new Error('画像を作成できませんでした');
+  showCurrentCard(blob,'Photocard-cropped.jpg');$('manualPanel').style.display='none';status('切り抜きできたよ。確認して「アルバムに保存」を押してね。');
+ }catch(err){$('scanStatus').textContent='切り抜けませんでした。カード全体が写った画像でもう一度試してね。';}
+};
+
+async function loadAlbumCard(item){showCurrentCard(item.blob,item.name);status('アルバムからトレカを読み込んだよ。');window.scrollTo({top:0,behavior:'smooth'});}
+function status(msg){$('status').textContent=msg}
+function updateCard(){
+ card.style.left=(cardX*100)+'%';card.style.top=(cardY*100)+'%';
+ card.style.width=size.value+'%';card.style.transform=`translate(-50%,-50%) rotate(${rotate.value}deg)`;
+ $('sizeValue').textContent=size.value+'%';$('rotateValue').textContent=rotate.value+'°';
+}
+size.addEventListener('input',updateCard);rotate.addEventListener('input',updateCard);
+$('resetCard').onclick=()=>{cardX=.5;cardY=.48;size.value=42;rotate.value=0;card.style.aspectRatio=cardImage?(cardImage.naturalWidth+' / '+cardImage.naturalHeight):'2 / 3';updateCard()};
+$('cardInput').addEventListener('change',e=>{
+ const file=e.target.files&&e.target.files[0];if(!file)return;
+ showCurrentCard(file,file.name||'My Photocard');
+ e.target.value='';
+});
+$('scanInput').addEventListener('change',e=>{
+ const file=e.target.files&&e.target.files[0];if(!file)return;
+ showCurrentCard(file,file.name||'Scanned Photocard');
+ status('撮影したトレカをカードとして読み込んだよ。必要なら四隅を手動で切り抜いてね。');
+ e.target.value='';
+});
+$('saveToAlbum').onclick=async()=>{
+ if(!currentBlob){status('先にトレカ画像を読み込んでね。');return;}
+ try{
+   await albumRequest('readwrite',store=>store.add({name:currentName,blob:currentBlob,createdAt:Date.now()}));
+   await refreshAlbum();status('アルバムに保存したよ！いつでも「使う」から呼び出せるわ。');
+ }catch(e){status('アルバムに保存できませんでした。Safariの空き容量を確認してね。');}
+};
+function stopCamera(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}video.srcObject=null;$('captureDock').style.display='none';$('captureInStage').style.display='none';$('dragHint').style.display='block';document.body.classList.remove('camera-on')}
+$('startCamera').onclick=async()=>{
+ if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){status('この環境ではカメラを利用できません。HTTPSのページをiPhoneのSafariで開いてね。');return}
+ try{stopCamera();stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:facing},width:{ideal:1920},height:{ideal:2560}}});
+ video.srcObject=stream;await video.play();video.style.display='block';$('previewBg').style.display='none';$('sceneLabel').textContent='CAMERA · LIVE';$('captureDock').style.display='none';$('captureInStage').style.display='flex';$('dragHint').style.display='none';document.body.classList.add('camera-on');status('カメラ起動中。プレビュー内の撮影ボタンから撮れるよ。')}
+ catch(err){status(err.name==='NotAllowedError'?'カメラの使用が許可されていません。ブラウザの設定でカメラを許可してね。':'カメラを起動できませんでした。HTTPSで開き、他のカメラアプリを閉じて再試行してね。')}
+};
+$('switchCamera').onclick=()=>{facing=facing==='environment'?'user':'environment';if(stream)$('startCamera').click();else status(facing==='environment'?'背面カメラを選択しました。カメラを起動してね。':'前面カメラを選択しました。カメラを起動してね。')};
+function pointerPos(e){const r=stage.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height}}
+card.addEventListener('pointerdown',e=>{e.preventDefault();card.setPointerCapture(e.pointerId);const p=pointerPos(e);drag={x:p.x-cardX,y:p.y-cardY};card.style.cursor='grabbing'});
+card.addEventListener('pointermove',e=>{if(!drag)return;const p=pointerPos(e);cardX=Math.max(.05,Math.min(.95,p.x-drag.x));cardY=Math.max(.08,Math.min(.92,p.y-drag.y));updateCard()});
+function endDrag(){drag=null;card.style.cursor='grab'}card.addEventListener('pointerup',endDrag);card.addEventListener('pointercancel',endDrag);
+function loadImage(src){return new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=reject;im.src=src})}
+async function takePhoto(){
+ try{
+ // Capture the same 3:4 frame the user sees in the preview, not the camera's uncropped raw aspect ratio.
+ const rect=stage.getBoundingClientRect();
+ const outW=1080, outH=Math.round(outW*(rect.height/rect.width));
+ const canvas=document.createElement('canvas');canvas.width=outW;canvas.height=outH;
+ const ctx=canvas.getContext('2d');
+ if(video.readyState>=2&&video.videoWidth){
+   // Match CSS object-fit: cover.
+   const vw=video.videoWidth, vh=video.videoHeight;
+   const scale=Math.max(outW/vw,outH/vh);
+   const sw=outW/scale, sh=outH/scale;
+   const sx=(vw-sw)/2, sy=(vh-sh)/2;
+   ctx.drawImage(video,sx,sy,sw,sh,0,0,outW,outH);
+ }else{
+   const g=ctx.createLinearGradient(0,0,outW,outH);g.addColorStop(0,'#f7eaf1');g.addColorStop(1,'#c9b3c8');
+   ctx.fillStyle=g;ctx.fillRect(0,0,outW,outH);
+   ctx.fillStyle='#ffffff55';ctx.beginPath();ctx.arc(outW*.25,outH*.2,outW*.18,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle='#bba7b8';ctx.beginPath();ctx.ellipse(outW*.5,outH*1.05,outW*.48,outH*.3,0,0,Math.PI*2);ctx.fill();
+ }
+ const scaleX=outW/rect.width, scaleY=outH/rect.height;
+ const cardRect=card.getBoundingClientRect();
+ const cw=cardRect.width, ch=cardRect.height;
+ const cx=cardX*rect.width,cy=cardY*rect.height;
+ ctx.save();ctx.translate(cx*scaleX,cy*scaleY);ctx.rotate(Number(rotate.value)*Math.PI/180);
+ ctx.shadowColor='rgba(30,15,35,.35)';ctx.shadowBlur=18*scaleX;ctx.shadowOffsetY=9*scaleY;
+ if(cardImage){
+   const iw=cardImage.naturalWidth, ih=cardImage.naturalHeight;
+   const fit=Math.min((cw*scaleX)/iw,(ch*scaleY)/ih);
+   const dw=iw*fit, dh=ih*fit;
+   // Soft shadow from the clear sleeve, slightly larger than the photocard.
+   const pad=Math.max(5,outW*.0045), rx=-dw/2-pad, ry=-dh/2-pad, rw=dw+pad*2, rh=dh+pad*2;
+   const radius=Math.max(8,outW*.012);
+   ctx.save();
+   ctx.shadowColor='rgba(0,0,0,.24)';ctx.shadowBlur=16*scaleX;ctx.shadowOffsetX=2*scaleX;ctx.shadowOffsetY=5*scaleY;
+   ctx.beginPath();ctx.roundRect(rx,ry,rw,rh,radius);ctx.fillStyle='rgba(255,255,255,.16)';ctx.fill();
+   ctx.restore();
+   ctx.drawImage(cardImage,-dw/2,-dh/2,dw,dh);
+   // Glossy clear-plastic rim and subtle reflected highlight.
+   ctx.save();
+   ctx.beginPath();ctx.roundRect(rx,ry,rw,rh,radius);
+   ctx.strokeStyle='rgba(255,255,255,.94)';ctx.lineWidth=Math.max(2,outW*.0028);ctx.stroke();
+   ctx.beginPath();ctx.roundRect(rx+3,ry+3,rw-6,rh-6,Math.max(5,radius-3));
+   ctx.strokeStyle='rgba(255,255,255,.48)';ctx.lineWidth=Math.max(1,outW*.0012);ctx.stroke();
+   const glare=ctx.createLinearGradient(rx,ry,rx+rw*.42,ry+rh*.18);
+   glare.addColorStop(0,'rgba(255,255,255,.34)');glare.addColorStop(.45,'rgba(255,255,255,.10)');glare.addColorStop(1,'rgba(255,255,255,0)');
+   ctx.beginPath();ctx.moveTo(rx+rw*.05,ry+rh*.04);ctx.lineTo(rx+rw*.16,ry+rh*.04);ctx.lineTo(rx+rw*.48,ry+rh*.96);ctx.lineTo(rx+rw*.38,ry+rh*.96);ctx.closePath();ctx.fillStyle=glare;ctx.fill();
+   ctx.restore();
+ }
+ else{
+   const x=-cw*scaleX/2,y=-ch*scaleY/2,ww=cw*scaleX,hh=ch*scaleY;
+   const g=ctx.createLinearGradient(x,y,x+ww,y+hh);g.addColorStop(0,'#f5f5f5');g.addColorStop(.55,'#c9c9c9');g.addColorStop(1,'#888888');
+   ctx.fillStyle=g;ctx.fillRect(x,y,ww,hh);ctx.strokeStyle='white';ctx.lineWidth=8*scaleX;ctx.strokeRect(x+4*scaleX,y+4*scaleY,ww-8*scaleX,hh-8*scaleY);
+   ctx.shadowColor='transparent';ctx.fillStyle='white';ctx.textAlign='center';ctx.font=`bold ${Math.max(20,ww*.1)}px sans-serif`;ctx.fillText('✦ MY BIAS ✦',0,0);ctx.font=`${Math.max(12,ww*.055)}px sans-serif`;ctx.fillText('YOUR PHOTOCARD',0,hh*.15);
+ }
+ ctx.restore();
+ const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.94));
+ if(!blob)throw new Error('画像の生成に失敗しました');
+ if(capturedUrl&&capturedUrl.startsWith('blob:'))URL.revokeObjectURL(capturedUrl);
+ capturedUrl=URL.createObjectURL(blob);
+ $('result').src=capturedUrl;$('result').style.display='block';$('resultPanel').style.display='block';
+ status('撮影できたよ！プレビューと同じ縦長の構図で保存できるわ。下の「写真を保存」を押してね。');
+ $('resultPanel').scrollIntoView({behavior:'smooth',block:'nearest'});
+ }catch(err){status('撮影に失敗しました。ページを再読み込みして、もう一度試してね。')}
+}
+$('capture').onclick=takePhoto;$('captureFloating').onclick=takePhoto;$('captureInStage').onclick=takePhoto;
+$('download').onclick=()=>{
+ if(!capturedUrl)return;
+ // iOS Safari often ignores the download attribute for generated files.
+ // Open the generated image directly so the user can save it via Share > Save Image.
+ const opened=window.open(capturedUrl,'_blank');
+ if(!opened){
+   const a=document.createElement('a');a.href=capturedUrl;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove();
+ }
+ status('画像を開いたら、iPhoneの共有ボタンから「画像を保存」を選んでね。');
+};
+updateCard();refreshAlbum();
+</script>
+</body>
+</html>
